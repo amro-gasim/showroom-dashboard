@@ -1,0 +1,63 @@
+name: Refresh Showroom Dashboard
+
+# Hourly automated refresh of index.html (the GitHub Pages dashboard) from
+# the live "Showrooms Revamp Timeline.xlsx" workbook, via Microsoft Graph
+# (app-only auth). Requires three repository secrets — see
+# docs/GITHUB_ACTIONS_SETUP.md for what to ask IT/Azure admin for.
+#
+# Safe-by-construction: automation/refresh_dashboard.py raises and exits
+# non-zero on any parsing anomaly (wrong sheet count, showroom count != 5,
+# missing anchors, etc.), which fails this job before the commit/push step
+# ever runs — so a bad or degraded fetch never overwrites the live site.
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-dashboard
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --quiet openpyxl requests
+
+      - name: Fetch workbook from Microsoft Graph and build raw dump
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: python3 automation/graph_fetch_and_dump.py /tmp/raw_sheet_dump.txt
+
+      - name: Regenerate dashboard data blocks
+        run: python3 automation/refresh_dashboard.py /tmp/raw_sheet_dump.txt index.html /tmp/refreshed_index.html
+
+      - name: Apply refreshed dashboard
+        run: cp /tmp/refreshed_index.html index.html
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "showroom-dashboard-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if git diff --quiet -- index.html; then
+            echo "No data changes this run — nothing to commit."
+          else
+            git add index.html
+            git commit -m "Automated hourly data refresh"
+            git push
+          fi
