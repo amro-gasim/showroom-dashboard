@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Showroom Revamp — Program Board</title>
+<style>
+  :root{
+    --bg:#15181B;
+    --panel:#1D2124;
+    --panel-alt:#242A2E;
+    --panel-line:#33393E;
+    --ink:#F2EEE6;
+    --muted:#9AA1A6;
+    --muted-2:#6E747A;
+    --brass:#C79449;
+    --brass-dim:#8A6A3B;
+    --steel:#6C90B8;
+    --green:#4E9C6C;
+    --green-dim:#2C4235;
+    --amber:#D9A441;
+    --amber-dim:#463823;
+    --red:#C1544A;
+    --red-dim:#472B28;
+    --grey-dim:#33393E;
+    --serif: 'Iowan Old Style','Palatino Linotype','Book Antiqua', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{padding:28px 20px 60px;}
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  /* header */
+  .masthead{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;
+    border-bottom:1px solid var(--panel-line);padding-bottom:18px;margin-bottom:22px;}
+  .masthead h1{font-family:var(--serif);font-weight:600;font-size:28px;margin:0 0 4px;letter-spacing:0.2px;}
+  .masthead .sub{color:var(--muted);font-size:13px;}
+  .masthead .meta{text-align:right;color:var(--muted);font-size:12.5px;line-height:1.7;}
+  .meta b{color:var(--ink);}
+
+  /* KPI strip */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--panel-line);
+    border:1px solid var(--panel-line);margin-bottom:26px;}
+  .kpi{background:var(--panel);padding:16px 18px;}
+  .kpi .label{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;}
+  .kpi .value{font-family:var(--serif);font-size:30px;line-height:1;}
+  .kpi .value small{font-family:var(--sans);font-size:14px;color:var(--muted);margin-left:4px;}
+  .kpi.warn .value{color:var(--red);}
+  .kpi.ok .value{color:var(--green);}
+  .kpi .foot{color:var(--muted-2);font-size:11.5px;margin-top:6px;}
+
+  /* tabs */
+  .tabs{display:flex;gap:2px;margin-bottom:20px;border-bottom:1px solid var(--panel-line);}
+  .tab{background:none;border:none;color:var(--muted);font-family:var(--sans);font-size:13.5px;
+    padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;}
+  .tab.active{color:var(--ink);border-bottom-color:var(--brass);}
+  .tab:hover{color:var(--ink);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* program board cards */
+  .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;}
+  .card{background:var(--panel);border:1px solid var(--panel-line);position:relative;}
+  .card-head{display:flex;align-items:center;gap:12px;padding:16px 16px 12px;cursor:pointer;}
+  .stamp{width:30px;height:30px;border:1.5px solid var(--brass);border-radius:50%;display:flex;
+    align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;color:var(--brass);flex:0 0 auto;}
+  .card-head .titles{flex:1;min-width:0;}
+  .card-head .name{font-family:var(--serif);font-size:18px;}
+  .card-head .code{color:var(--muted);font-size:11.5px;letter-spacing:0.04em;}
+  .rag{font-size:11px;padding:3px 9px;border-radius:2px;white-space:nowrap;font-weight:600;letter-spacing:0.02em;}
+  .rag.green{background:var(--green-dim);color:#8FD6A8;}
+  .rag.amber{background:var(--amber-dim);color:#F0C979;}
+  .rag.red{background:var(--red-dim);color:#F3968C;}
+  .chev{color:var(--muted-2);font-size:12px;transition:transform .15s;flex:0 0 auto;}
+  .card.open .chev{transform:rotate(90deg);}
+
+  .progress-row{padding:0 16px 14px;}
+  .progress-track{height:6px;background:var(--panel-alt);position:relative;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--brass);transition:width .25s;}
+  .progress-meta{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:6px;}
+
+  .card-body{max-height:0;overflow:hidden;transition:max-height .2s ease;border-top:1px solid transparent;}
+  .card.open .card-body{max-height:1400px;border-top-color:var(--panel-line);}
+  .checklist{padding:10px 16px 6px;}
+  .item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px dashed var(--panel-line);}
+  .item:last-child{border-bottom:none;}
+  .item input[type=checkbox]{margin-top:3px;width:15px;height:15px;accent-color:var(--brass);cursor:pointer;flex:0 0 auto;}
+  .item .itxt{flex:1;min-width:0;}
+  .item .ilabel{font-size:13.5px;}
+  .item .idate{font-size:11.5px;color:var(--muted-2);margin-top:1px;}
+  .item .idate.overdue{color:var(--red);}
+  .pill{font-size:10.5px;padding:2px 7px;border-radius:2px;flex:0 0 auto;letter-spacing:0.02em;}
+  .pill.done{background:var(--green-dim);color:#8FD6A8;}
+  .pill.overdue{background:var(--red-dim);color:#F3968C;}
+  .pill.pending{background:var(--panel-alt);color:var(--muted);}
+  .pill.flag{background:var(--amber-dim);color:#F0C979;}
+
+  .accessories{margin:6px 16px 16px;padding:10px 12px;background:var(--panel-alt);border-left:2px solid var(--amber);}
+  .accessories .atitle{font-size:11.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--amber);margin-bottom:6px;}
+  .accessories .aline{font-size:12.5px;color:var(--muted);display:flex;justify-content:space-between;padding:3px 0;}
+
+  /* department view */
+  .dept{background:var(--panel);border:1px solid var(--panel-line);margin-bottom:12px;}
+  .dept-head{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;}
+  .dept-head .dname{font-family:var(--serif);font-size:16.5px;flex:1;}
+  .dept-head .dcount{color:var(--muted);font-size:12px;}
+  .dept-track{width:120px;height:5px;background:var(--panel-alt);}
+  .dept-fill{height:100%;background:var(--steel);}
+  .dept-body{display:none;padding:0 16px 12px;}
+  .dept.open .dept-body{display:block;}
+  .drow{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px dashed var(--panel-line);}
+  .drow:last-child{border-bottom:none;}
+  .drow input{margin-top:3px;accent-color:var(--steel);}
+  .drow .dshowroom{font-size:11px;color:var(--muted-2);text-transform:uppercase;letter-spacing:0.04em;width:74px;flex:0 0 auto;padding-top:1px;}
+  .drow .dlabel{flex:1;font-size:13px;}
+  .drow .ddate{font-size:11px;color:var(--muted-2);}
+
+  /* gaps view */
+  .gap-card{background:var(--panel);border:1px solid var(--panel-line);border-left:3px solid var(--muted-2);
+    padding:14px 16px;margin-bottom:10px;}
+  .gap-card.critical{border-left-color:var(--red);}
+  .gap-card.high{border-left-color:var(--amber);}
+  .gap-card.medium{border-left-color:var(--steel);}
+  .gap-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:10px;}
+  .gap-title{font-size:14px;font-weight:600;}
+  .sev{font-size:10px;padding:2px 8px;border-radius:2px;text-transform:uppercase;letter-spacing:0.05em;flex:0 0 auto;}
+  .sev.critical{background:var(--red-dim);color:#F3968C;}
+  .sev.high{background:var(--amber-dim);color:#F0C979;}
+  .sev.medium{background:rgba(108,144,184,0.18);color:#A9C3E0;}
+  .gap-body{font-size:13px;color:var(--muted);line-height:1.55;}
+
+  /* mom log */
+  table{width:100%;border-collapse:collapse;font-size:12.8px;}
+  th{text-align:left;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;
+    letter-spacing:0.04em;padding:8px 10px;border-bottom:1px solid var(--panel-line);}
+  td{padding:9px 10px;border-bottom:1px solid var(--panel-line);vertical-align:top;color:var(--ink);}
+  tr:last-child td{border-bottom:none;}
+  .mom-subj{max-width:340px;}
+  .mom-block{margin-bottom:22px;}
+  .mom-block h3{font-family:var(--serif);font-size:15px;color:var(--muted);font-weight:600;margin:0 0 8px;}
+
+  .foot-note{margin-top:34px;padding-top:16px;border-top:1px solid var(--panel-line);color:var(--muted-2);font-size:11.5px;line-height:1.6;}
+  .reset{background:none;border:1px solid var(--panel-line);color:var(--muted);font-size:11px;padding:5px 10px;
+    cursor:pointer;border-radius:2px;}
+  .reset:hover{color:var(--ink);border-color:var(--muted);}
+  .loading{color:var(--muted);font-size:13px;padding:40px 0;text-align:center;}
+
+  @media (max-width:640px){
+    .kpis{grid-template-columns:repeat(2,1fr);}
+    .masthead{flex-direction:column;align-items:flex-start;}
+    .masthead .meta{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1>Showroom Revamp — Program Board</h1>
+      <div class="sub">Dubai A/B · Abu Dhabi A/B · Al Ain — Wall Fit Interiors closets &amp; Doors hardware</div>
+    </div>
+    <div class="meta">
+      <div>As of <b id="asof"></b></div>
+      <div>Source: Showrooms_Revamp_Timeline.xlsx (V2), MOM 20+27 Aug</div>
+      <div>Data refreshed: 02 Sep 2026, 12:27 UTC</div>
+      <div><button class="reset" id="resetBtn">Reset checklist</button></div>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-view="board">Program Board</button>
+    <button class="tab" data-view="dept">By Department</button>
+    <button class="tab" data-view="gaps">Gaps &amp; Risks</button>
+    <button class="tab" data-view="mom">MOM Action Log</button>
+  </div>
+
+  <div class="view active" id="view-board">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="view" id="view-dept">
+    <div id="deptList"></div>
+  </div>
+
+  <div class="view" id="view-gaps">
+    <div id="gapsList"></div>
+  </div>
+
+  <div class="view" id="view-mom">
+    <div id="momList"></div>
+  </div>
+
+  <div class="foot-note" id="loadingNote">Loading saved checklist state…</div>
+</div>
+
+<script>
+/* ---------------- Data (from Showrooms_Revamp_Timeline.xlsx, sheet "Showroom Revamp Timeline V2") ---------------- */
+const SHOWROOMS = [
+  { id:'dxbB', code:'DXB (B)', name:'Dubai — Showroom B', priority:1,
+    design:'2026-08-07', materialAvailability:'2026-08-31', poCreation:'2026-08-24', poConfirmRnD:'2026-09-02',
+    cncBlockConfirm:null, cncNote:'2-Sep (No CNC automation)', materialGate:'2026-08-31',
+    schedule:'2026-09-23', previsit:'2026-09-01', prodStart:'2026-09-06', prodEnd:'2026-09-22',
+    removalDays:6.5, install1:59, install2:29.5, deadline:'2026-10-22',
+    v1Deadline:'2026-10-15', doorsAvailability:'2026-10-10' },
+  { id:'aan', code:'AAN', name:'Al Ain Showroom', priority:2,
+    design:'2026-07-07', materialAvailability:'2026-08-31', poCreation:'2026-08-05', poConfirmRnD:'2026-08-10',
+    cncBlockConfirm:'2026-09-09', cncNote:null, materialGate:'2026-08-31',
+    schedule:'2026-11-01', previsit:'2026-10-10', prodStart:'2026-10-15', prodEnd:'2026-10-31',
+    removalDays:5, install1:35, install2:17.5, deadline:'2026-11-18',
+    v1Deadline:'2026-10-05', doorsAvailability:'2026-10-10' },
+  { id:'dxbA', code:'DXB (A)', name:'Dubai — Showroom A', priority:3,
+    design:'2026-07-06', materialAvailability:'2026-08-31', poCreation:'2026-08-12', poConfirmRnD:'2026-08-13',
+    cncBlockConfirm:'2026-09-18', cncNote:null, materialGate:'2026-08-31',
+    schedule:'2026-11-19', previsit:'2026-10-28', prodStart:'2026-11-02', prodEnd:'2026-11-18',
+    removalDays:3.5, install1:26, install2:13, deadline:'2026-12-02',
+    v1Deadline:'2026-10-23', doorsAvailability:'2026-10-10' },
+  { id:'auhA', code:'AUH (A)', name:'Abu Dhabi Showroom A', priority:4,
+    design:'2026-07-10', materialAvailability:'2026-08-31', poCreation:'2026-08-05', poConfirmRnD:'2026-08-05',
+    cncBlockConfirm:'2026-08-27', cncNote:null, materialGate:'2026-08-31',
+    schedule:'2026-12-06', previsit:'2026-11-14', prodStart:'2026-11-19', prodEnd:'2026-12-05',
+    removalDays:1, install1:4, install2:2, deadline:'2026-12-08',
+    v1Deadline:'2026-10-18', doorsAvailability:'2026-10-10' },
+  { id:'auhB', code:'AUH (B)', name:'Abu Dhabi Showroom B', priority:5,
+    design:'2026-07-24', materialAvailability:'2026-08-31', poCreation:'2026-08-12', poConfirmRnD:'2026-08-17',
+    cncBlockConfirm:'2026-09-28', cncNote:null, materialGate:'2026-08-31',
+    schedule:'2026-12-09', previsit:'2026-11-17', prodStart:'2026-11-22', prodEnd:'2026-12-08',
+    removalDays:4.5, install1:36, install2:18, deadline:'2026-12-27',
+    v1Deadline:'2026-11-22', doorsAvailability:'2026-10-10' },
+];
+
+// 13 checklist items per showroom, in the order they appear in the source workbook.
+// dept: which rollup department owns this stage.
+const ITEM_DEFS = [
+  { key:'design',         label:'Design finalized',                      dept:'Design',                dateField:'design' },
+  { key:'materialAvailability', label:'Material availability confirmed',  dept:'Supply Chain / Procurement', dateField:'materialAvailability' },
+  { key:'poCreation',      label:'PO created',                           dept:'Supply Chain / Procurement', dateField:'poCreation' },
+  { key:'poConfirmRnD',    label:'PO confirmed by R&D',                  dept:'R&D',                   dateField:'poConfirmRnD' },
+  { key:'cncBlockConfirm', label:'CNC / block confirmation',             dept:'R&D',                   dateField:'cncBlockConfirm' },
+  { key:'materialGate',    label:'Material gate passed',                 dept:'Supply Chain / Procurement', dateField:'materialGate' },
+  { key:'schedule',        label:'On-site mobilization (Schedule)',      dept:'Engineering & Planning', dateField:'schedule' },
+  { key:'previsit',        label:'Pre-visit completed',                  dept:'Engineering & Planning', dateField:'previsit' },
+  { key:'prodStart',       label:'Production start & pre-assembly',      dept:'Production',            dateField:'prodStart' },
+  { key:'prodEnd',         label:'Production end',                       dept:'Production',            dateField:'prodEnd' },
+  { key:'removal',         label:'Removal (existing fixtures)',          dept:'Operations / Installation', dateField:'deadline', durationField:'removalDays' },
+  { key:'installation',    label:'Installation & civil work',            dept:'Operations / Installation', dateField:'deadline', durationField:'install2' },
+  { key:'deadline',        label:'Final handover (Deadline)',            dept:'Operations / Installation', dateField:'deadline' },
+];
+
+const DEPARTMENTS = ['Design','Supply Chain / Procurement','R&D','Engineering & Planning','Production','Operations / Installation'];
+
+const MOM = {
+  '20 Aug MOM': [
+    {n:1, subject:'Current block designs with the trims will remain as is', owner:'All', target:null, status:'Confirmed'},
+    {n:2, subject:'End caps will not be implemented in these renovations - End goal is less trims not more', owner:'All', target:null, status:'Confirmed'},
+    {n:3, subject:'Any new block designs or updates that are not yet confirmed or officially launched will not be implemented in the renovation', owner:'All', target:null, status:'Confirmed'},
+    {n:4, subject:'All products will be pre-assembled before installation', owner:'Operations', target:null, status:'Confirmed'},
+    {n:5, subject:'Installation will be carried out in phases - Phased layout plan for each showroom will be shared by operations for the commercial team\'s confirmation', owner:'Operations', target:null, status:'Progress', note:'TBC'},
+    {n:6, subject:'@Alaa Serri and @Rida Mohamad Moussa to confirm which components will be CNC processed and which will be manually processed, based on the ongoing CNC testing', owner:'R&D / Production', target:'2026-08-21', status:'Progress'},
+    {n:7, subject:'The Design and Technical teams will revise the drawings and block for POs based on the comments shared by the R&D team on 19 August', owner:'Design / Tech', target:'2026-08-28', status:'Progress'},
+    {n:8, subject:'Flexi Board components required for the curved archway - Al Ain room 6', owner:'Supply chain', target:'2026-08-21', status:'Done', note:'Material Available in stock'},
+  ],
+  '27 Aug MOM': [
+    {n:1, subject:'below are the showrooms by Priority : Dubai B. Al Ain. Dubai A. Abu Dhabi A. Abi Dhabi B.', owner:'Commercial Dep', target:'2026-08-27', status:'Progress', note:'TBC By Commercial Team'},
+    {n:2, subject:'Dubai B will not be produced with automated CNC due timeline limitation.', owner:'R&D / Production', target:null, status:'Confirmed'},
+    {n:3, subject:'Installation time line for Dubai B to be reduced by 7 days by prioritizing Dubai B over other showrooms & to align with the target datre on 15th of October.', owner:'Planning & operations', target:'2026-08-27', status:'Progress'},
+    {n:4, subject:'Doors mateirel availability 10th of October - to be installed in 3 days for every showroom - Dubai B to be prioratized', owner:'Procurment & Operations', target:null, status:'Confirmed'},
+    {n:5, subject:'Installation will be carried out in phases - Phased layout plan for each showroom will be shared by operations for the commercial team\'s confirmation', owner:'Operations', target:'2026-09-03', status:'Progress'},
+    {n:6, subject:'Revised design as per comments', owner:'Design', target:'2026-08-28', status:'Progress'},
+  ]
+};
+
+/* ---------------- State & storage ---------------- */
+const STORAGE_KEY = 'showroom-checklist-state';
+let checklist = {}; // { showroomId: { itemKey: bool } }
+
+function defaultChecked(sr, item){
+  const now = new Date();
+  if(item.key === 'cncBlockConfirm' && !item.dateField) return false;
+  const dateStr = item.dateField ? sr[item.dateField] : null;
+  if(!dateStr) return false;
+  return new Date(dateStr) < now;
+}
+
+function buildDefaultState(){
+  const st = {};
+  SHOWROOMS.forEach(sr=>{
+    st[sr.id] = {};
+    ITEM_DEFS.forEach(item=>{
+      st[sr.id][item.key] = defaultChecked(sr, item);
+    });
+  });
+  return st;
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const saved = JSON.parse(raw);
+      const base = buildDefaultState();
+      SHOWROOMS.forEach(sr=>{
+        ITEM_DEFS.forEach(item=>{
+          if(saved[sr.id] && typeof saved[sr.id][item.key] === 'boolean'){
+            base[sr.id][item.key] = saved[sr.id][item.key];
+          }
+        });
+      });
+      checklist = base;
+      return;
+    }
+  }catch(e){ /* no saved state yet, or storage unavailable */ }
+  checklist = buildDefaultState();
+}
+
+let saveTimer = null;
+function saveState(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(checklist)); }
+    catch(e){ /* storage unavailable in this browser context — state just won't persist */ }
+  }, 250);
+}
+
+/* ---------------- Helpers ---------------- */
+function fmtDate(d){
+  if(!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+}
+function daysBetween(a,b){ return Math.round((b-a)/86400000); }
+function pct(n){ return Math.round(n*100); }
+
+function showroomProgress(sr){
+  const items = checklist[sr.id] || {};
+  const total = ITEM_DEFS.length;
+  const done = ITEM_DEFS.filter(i=>items[i.key]).length;
+  return {done, total, ratio: done/total};
+}
+function overallProgress(){
+  let done=0, total=0;
+  SHOWROOMS.forEach(sr=>{ const p=showroomProgress(sr); done+=p.done; total+=p.total; });
+  return {done, total, ratio: total?done/total:0};
+}
+function ragForDeadline(sr){
+  const now = new Date();
+  const dl = new Date(sr.deadline);
+  const p = showroomProgress(sr);
+  if(p.ratio === 1) return 'green';
+  const daysLeft = daysBetween(now, dl);
+  if(daysLeft < 0) return 'red';
+  if(daysLeft <= 14) return 'amber';
+  return 'green';
+}
+function overdueCount(){
+  const now = new Date();
+  let n=0;
+  SHOWROOMS.forEach(sr=>{
+    ITEM_DEFS.forEach(item=>{
+      if(!item.dateField) return;
+      const d = sr[item.dateField];
+      if(!d) return;
+      if(new Date(d) < now && !checklist[sr.id][item.key]) n++;
+    });
+  });
+  return n;
+}
+function momOverdueCount(){
+  const now = new Date();
+  let n=0;
+  Object.values(MOM).forEach(list=>list.forEach(m=>{
+    if(m.target && new Date(m.target) < now && m.status!=='Confirmed' && m.status!=='Done') n++;
+  }));
+  return n;
+}
+function earliestUpcoming(){
+  const now = new Date();
+  const upcoming = SHOWROOMS.filter(sr=>showroomProgress(sr).ratio<1)
+    .sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
+  return upcoming[0] || null;
+}
+
+/* ---------------- Render: KPIs ---------------- */
+function renderKPIs(){
+  const op = overallProgress();
+  const next = earliestUpcoming();
+  const overdue = overdueCount();
+  const momOverdue = momOverdueCount();
+  const html = `
+    <div class="kpi">
+      <div class="label">Program complete</div>
+      <div class="value">${pct(op.ratio)}%<small>${op.done}/${op.total} tasks</small></div>
+      <div class="foot">Across all 5 showrooms</div>
+    </div>
+    <div class="kpi ${next ? '' : 'ok'}">
+      <div class="label">Next deadline</div>
+      <div class="value" style="font-size:22px">${next ? fmtDate(next.deadline) : '— all done'}</div>
+      <div class="foot">${next ? next.code + ' · Priority ' + next.priority : ''}</div>
+    </div>
+    <div class="kpi ${overdue>0?'warn':'ok'}">
+      <div class="label">Overdue tasks (unchecked)</div>
+      <div class="value">${overdue}</div>
+      <div class="foot">Planned date passed, not marked done</div>
+    </div>
+    <div class="kpi ${momOverdue>0?'warn':'ok'}">
+      <div class="label">MOM actions overdue</div>
+      <div class="value">${momOverdue}</div>
+      <div class="foot">Open items past target date</div>
+    </div>
+  `;
+  document.getElementById('kpis').innerHTML = html;
+}
+
+/* ---------------- Render: Program Board ---------------- */
+let openCards = new Set();
+function renderBoard(){
+  const now = new Date();
+  const html = SHOWROOMS.slice().sort((a,b)=>a.priority-b.priority).map(sr=>{
+    const p = showroomProgress(sr);
+    const rag = ragForDeadline(sr);
+    const dl = new Date(sr.deadline);
+    const daysLeft = daysBetween(now, dl);
+    const ragLabel = p.ratio===1 ? 'Complete' : (daysLeft<0 ? Math.abs(daysLeft)+'d overdue' : daysLeft+'d left');
+    const isOpen = openCards.has(sr.id);
+    const items = ITEM_DEFS.map(item=>{
+      const checked = checklist[sr.id][item.key];
+      const dateStr = item.dateField ? sr[item.dateField] : null;
+      const isPast = dateStr ? new Date(dateStr) < now : false;
+      let dateLabel = '';
+      if(item.key==='cncBlockConfirm' && sr.cncNote){
+        dateLabel = sr.cncNote;
+      } else if(item.durationField){
+        dateLabel = `${sr[item.durationField]} days · target ${fmtDate(dateStr)}`;
+      } else {
+        dateLabel = fmtDate(dateStr);
+      }
+      let pillHtml = '';
+      if(checked){ pillHtml = '<span class="pill done">Done</span>'; }
+      else if(item.key==='cncBlockConfirm' && sr.cncNote){ pillHtml = '<span class="pill flag">Manual</span>'; }
+      else if(isPast){ pillHtml = '<span class="pill overdue">Overdue</span>'; }
+      else { pillHtml = '<span class="pill pending">Pending</span>'; }
+      return `<div class="item">
+        <input type="checkbox" data-sr="${sr.id}" data-item="${item.key}" data-scope="board" ${checked?'checked':''}>
+        <div class="itxt">
+          <div class="ilabel">${item.label}</div>
+          <div class="idate ${isPast && !checked ? 'overdue':''}">${dateLabel}</div>
+        </div>
+        ${pillHtml}
+      </div>`;
+    }).join('');
+    return `<div class="card ${isOpen?'open':''}" data-card="${sr.id}">
+      <div class="card-head" data-toggle="${sr.id}">
+        <div class="stamp">${sr.priority}</div>
+        <div class="titles">
+          <div class="name">${sr.name}</div>
+          <div class="code">${sr.code} · Deadline ${fmtDate(sr.deadline)}</div>
+        </div>
+        <div class="rag ${rag}">${ragLabel}</div>
+        <div class="chev">▸</div>
+      </div>
+      <div class="progress-row">
+        <div class="progress-track"><div class="progress-fill" style="width:${pct(p.ratio)}%"></div></div>
+        <div class="progress-meta"><span>${pct(p.ratio)}% complete</span><span>${p.done}/${p.total} tasks</span></div>
+      </div>
+      <div class="card-body">
+        <div class="checklist">${items}</div>
+        <div class="accessories">
+          <div class="atitle">Doors accessories workstream</div>
+          <div class="aline"><span>Material availability</span><span>${fmtDate(sr.doorsAvailability)}</span></div>
+          <div class="aline"><span>PO creation</span><span>Not yet planned</span></div>
+          <div class="aline"><span>Installation</span><span>Not yet planned</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('board').innerHTML = html;
+
+  document.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = el.getAttribute('data-toggle');
+      if(openCards.has(id)) openCards.delete(id); else openCards.add(id);
+      renderBoard();
+    });
+  });
+  bindCheckboxes();
+}
+
+/* ---------------- Render: Department view ---------------- */
+let openDepts = new Set();
+function renderDept(){
+  const now = new Date();
+  const html = DEPARTMENTS.map(dep=>{
+    const rows = [];
+    let done=0, total=0;
+    SHOWROOMS.slice().sort((a,b)=>a.priority-b.priority).forEach(sr=>{
+      ITEM_DEFS.filter(i=>i.dept===dep).forEach(item=>{
+        total++;
+        const checked = checklist[sr.id][item.key];
+        if(checked) done++;
+        const dateStr = item.dateField ? sr[item.dateField] : null;
+        let dateLabel = item.key==='cncBlockConfirm' && sr.cncNote ? sr.cncNote
+          : item.durationField ? `${sr[item.durationField]}d · ${fmtDate(dateStr)}`
+          : fmtDate(dateStr);
+        rows.push(`<div class="drow">
+          <input type="checkbox" data-sr="${sr.id}" data-item="${item.key}" data-scope="dept" ${checked?'checked':''}>
+          <div class="dshowroom">${sr.code}</div>
+          <div class="dlabel">${item.label}</div>
+          <div class="ddate">${dateLabel}</div>
+        </div>`);
+      });
+    });
+    const isOpen = openDepts.has(dep);
+    const ratio = total?done/total:0;
+    return `<div class="dept ${isOpen?'open':''}">
+      <div class="dept-head" data-dept="${dep}">
+        <div class="dname">${dep}</div>
+        <div class="dcount">${done}/${total}</div>
+        <div class="dept-track"><div class="dept-fill" style="width:${pct(ratio)}%"></div></div>
+        <div class="chev" style="${isOpen?'transform:rotate(90deg)':''}">▸</div>
+      </div>
+      <div class="dept-body">${rows.join('')}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('deptList').innerHTML = html;
+
+  document.querySelectorAll('[data-dept]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const dep = el.getAttribute('data-dept');
+      if(openDepts.has(dep)) openDepts.delete(dep); else openDepts.add(dep);
+      renderDept();
+    });
+  });
+  bindCheckboxes();
+}
+
+function bindCheckboxes(){
+  document.querySelectorAll('input[type=checkbox][data-sr]').forEach(cb=>{
+    cb.addEventListener('change', (e)=>{
+      const sr = e.target.getAttribute('data-sr');
+      const item = e.target.getAttribute('data-item');
+      checklist[sr][item] = e.target.checked;
+      saveState();
+      renderKPIs();
+      renderBoard();
+      renderDept();
+    });
+  });
+}
+
+/* ---------------- Render: Gaps & Risks (static audit findings) ---------------- */
+const GAPS = [
+  {sev:'critical', title:'Every showroom deadline has slipped 35–51 days between the V1 and V2 timeline tabs in this same workbook, with no documented reason',
+   body:'AAN: 05 Oct → 18 Nov (+44d). DXB (A): 23 Oct → 02 Dec (+40d). AUH (A): 18 Oct → 08 Dec (+51d). AUH (B): 22 Nov → 27 Dec (+35d). The "Overall Comments" cell that would explain this is blank. No updated risk register accompanies the revision.'},
+  {sev:'critical', title:'Dubai B deadline (22 Oct) still misses the 15 Oct brand-launch target the 27 Aug MOM committed to',
+   body:'MOM action #3 (27 Aug, target 27 Aug, still "Progress") commits to reducing the Dubai B timeline by 7 days specifically "to align with the target date on 15th of October." The V2 master schedule instead shows a 22 Oct deadline — 7 days after, not aligned with, that target — and the action item tracking this has no recorded closure.'},
+  {sev:'high', title:'No department or individual owner is recorded against any milestone in the master timeline',
+   body:'The V1/V2 timeline tabs carry dates only — no "Owner" column. Accountability exists only at department level in the separate MOM logs, and only for the handful of decision items tracked there, not for the 65 schedule milestones this dashboard is built from.'},
+  {sev:'high', title:'"Material Availability" and "Material Gate" are dated 31-Aug-2026 for all five showrooms without exception',
+   body:'Identical dates across five showrooms with different scopes, designs, and production start dates is consistent with a placeholder assumption rather than a showroom-specific confirmation. Worth verifying with Supply Chain whether this was individually confirmed per showroom or copied forward.'},
+  {sev:'high', title:'"Civil work" is a labeled column in both timeline tabs but contains no data for any showroom',
+   body:'If civil work is in scope for any showroom, its duration and dependencies are currently untracked and excluded from the deadline calculation entirely.'},
+  {sev:'high', title:'Doors Accessories workstream has no PO, schedule, or installation date for any showroom',
+   body:'Only "Material Availability" (10 Oct, identical across all five) is populated. PO creation, schedule, and installation are blank for every showroom, despite door hardware being a named brand-launch dependency in the wider project correspondence.'},
+  {sev:'medium', title:'Five of fourteen tracked MOM action items are past their target date and still marked "Progress," not closed',
+   body:'20 Aug MOM: CNC/manual component confirmation (target 21 Aug) and Design/Tech drawing revisions (target 28 Aug). 27 Aug MOM: Commercial priority ranking (target 27 Aug, "TBC by Commercial team"), Dubai B 7-day reduction (target 27 Aug), and revised design per comments (target 28 Aug). No MOM has been issued since 27 Aug to update these.'},
+  {sev:'medium', title:'Dubai B (DXB B) production has an unresolved process exception, tracked as free text rather than a milestone date',
+   body:'The CNC Block Confirmation field for DXB (B) reads "2-Sep (No CNC automation)" instead of a date — manual production was substituted for the automated process used on the other four showrooms, per MOM confirmation, but this is not reflected as a trackable milestone or risk in either timeline tab.'},
+  {sev:'medium', title:'The published program duration figures may understate real risk if a single installation team is used',
+   body:'The V2 deadline for each showroom equals its Schedule date plus the 2-team installation duration, not the 1-team duration (which runs roughly twice as long in every row). Team-size assumptions are not stated as a formal constraint anywhere in the workbook — if only one team is available for a given showroom, the published deadline understates actual completion by 13–29 days depending on the site.'},
+];
+function renderGaps(){
+  document.getElementById('gapsList').innerHTML = GAPS.map(g=>`
+    <div class="gap-card ${g.sev}">
+      <div class="gap-top">
+        <div class="gap-title">${g.title}</div>
+        <div class="sev ${g.sev}">${g.sev}</div>
+      </div>
+      <div class="gap-body">${g.body}</div>
+    </div>`).join('');
+}
+
+/* ---------------- Render: MOM Action Log ---------------- */
+function renderMom(){
+  const now = new Date();
+  const blocks = Object.entries(MOM).map(([title, items])=>{
+    const rows = items.map(m=>{
+      const isOverdue = m.target && new Date(m.target) < now && m.status!=='Confirmed' && m.status!=='Done';
+      const statusPill = isOverdue ? '<span class="pill overdue">Overdue</span>'
+        : m.status==='Confirmed' ? '<span class="pill done">Confirmed</span>'
+        : m.status==='Done' ? '<span class="pill done">Done</span>'
+        : '<span class="pill pending">Progress</span>';
+      return `<tr>
+        <td>${m.n}</td>
+        <td class="mom-subj">${m.subject}${m.note?`<div style="color:var(--muted-2);font-size:11.5px;margin-top:2px;">${m.note}</div>`:''}</td>
+        <td>${m.owner}</td>
+        <td>${m.target?fmtDate(m.target):'—'}</td>
+        <td>${statusPill}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="mom-block">
+      <h3>${title}</h3>
+      <table>
+        <thead><tr><th>#</th><th>Subject</th><th>Owner</th><th>Target</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+  document.getElementById('momList').innerHTML = blocks;
+}
+
+/* ---------------- Tabs ---------------- */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-'+tab.dataset.view).classList.add('active');
+  });
+});
+
+/* ---------------- Reset ---------------- */
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  if(!confirm('Reset all checklist progress to the date-based defaults? This clears manual overrides for everyone viewing this board.')) return;
+  checklist = buildDefaultState();
+  saveState();
+  renderAll();
+});
+
+/* ---------------- Boot ---------------- */
+function renderAll(){
+  renderKPIs();
+  renderBoard();
+  renderDept();
+  renderGaps();
+  renderMom();
+}
+
+(function init(){
+  document.getElementById('asof').textContent = new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'});
+  loadState();
+  document.getElementById('loadingNote').style.display = 'none';
+  renderAll();
+})();
+</script>
+</body>
+</html>
