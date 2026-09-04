@@ -151,9 +151,71 @@
     .masthead{flex-direction:column;align-items:flex-start;}
     .masthead .meta{text-align:left;}
   }
+
+  body.locked .wrap{display:none;}
+  .gate-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;}
+  body:not(.locked) .gate-overlay{display:none;}
+  .gate-box{background:var(--panel);border:1px solid var(--panel-line);border-radius:8px;padding:36px 40px;max-width:380px;width:100%;text-align:center;}
+  .gate-icon{font-size:28px;margin-bottom:10px;}
+  .gate-box h2{font-family:var(--serif);font-size:19px;margin:0 0 10px;color:var(--ink);font-weight:600;}
+  .gate-box p{font-size:13px;color:var(--muted);margin:0 0 20px;line-height:1.5;}
+  .gate-box input{width:100%;box-sizing:border-box;background:var(--panel-alt);border:1px solid var(--panel-line);color:var(--ink);
+    padding:10px 12px;border-radius:4px;font-size:14px;margin-bottom:12px;text-align:center;letter-spacing:0.05em;font-family:var(--sans);}
+  .gate-box input:focus{outline:none;border-color:var(--brass);}
+  .gate-box button{width:100%;background:var(--brass);border:none;color:#15181B;font-weight:700;padding:10px;border-radius:4px;
+    font-size:13px;cursor:pointer;letter-spacing:0.03em;font-family:var(--sans);}
+  .gate-box button:hover{background:var(--brass-dim);color:var(--ink);}
+  .gate-error{color:var(--red);font-size:12px;margin-top:12px;}
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="gateOverlay" class="gate-overlay">
+  <div class="gate-box">
+    <div class="gate-icon">&#128274;</div>
+    <h2>Restricted — Passcode Required</h2>
+    <p>This board is for authorized Faham Doors team members only. Enter the passcode to continue.</p>
+    <input type="password" id="gateInput" placeholder="Passcode" autocomplete="off" />
+    <button id="gateSubmit">Unlock</button>
+    <div class="gate-error" id="gateError" style="display:none;">Incorrect passcode — try again.</div>
+  </div>
+</div>
+<script>
+(function(){
+  var KEY = 'srpb_unlocked_v1';
+  var HASH = '0ccc4e1def3cd99d301b8c7b7e481ac68d951398c380713394c635b76b878320';
+  async function sha256Hex(str){
+    var enc = new TextEncoder().encode(str);
+    var buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+  }
+  function unlock(){
+    document.body.classList.remove('locked');
+    var ov = document.getElementById('gateOverlay');
+    if(ov) ov.style.display = 'none';
+  }
+  try{
+    if(localStorage.getItem(KEY) === '1'){ unlock(); }
+  }catch(e){ /* storage unavailable — gate stays up every visit */ }
+  var input = document.getElementById('gateInput');
+  var btn = document.getElementById('gateSubmit');
+  var err = document.getElementById('gateError');
+  async function tryUnlock(){
+    var val = input.value;
+    var hash = await sha256Hex(val);
+    if(hash === HASH){
+      try{ localStorage.setItem(KEY, '1'); }catch(e){}
+      unlock();
+    } else {
+      err.style.display = 'block';
+      input.value = '';
+      input.focus();
+    }
+  }
+  if(btn) btn.addEventListener('click', tryUnlock);
+  if(input) input.addEventListener('keydown', function(e){ if(e.key === 'Enter') tryUnlock(); });
+})();
+</script>
+
 <div class="wrap">
 
   <div class="masthead">
