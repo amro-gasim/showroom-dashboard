@@ -255,7 +255,7 @@ def render_mom_js(mom20, mom27):
         parts = []
         for it in items:
             fields = [
-                f"n:{it['n']}",
+                f"n:{int(it['n'])}",
                 f"subject:{js_str(it['subject'])}",
                 f"owner:{js_str(it['owner'])}",
                 f"target:{js_str(it['target'])}",
