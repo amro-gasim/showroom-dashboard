@@ -91,7 +91,7 @@ def fmt_cell(v):
         return f'{v:%d.%m.%y}'
     if isinstance(v, float):
         return str(int(v)) if v == int(v) else str(v)
-    return str(v).strip()
+    return ' '.join(str(v).split())
 
 
 def dump_sheet(ws):
