@@ -434,8 +434,8 @@ def main():
     if n2 == 0:
         raise RuntimeError('MOM block not found/replaced — check anchors')
 
-    now = dt.datetime.utcnow()
-    refreshed_note = now.strftime('%d %b %Y, %H:%M UTC')
+    now = dt.datetime.now(dt.timezone(dt.timedelta(hours=4)))  # Dubai / GST, UTC+4, no DST
+    refreshed_note = now.strftime('%d %b %Y, %H:%M GST')
     new_line = '<div>Data refreshed: ' + refreshed_note + '</div>'
     # Strip out ANY existing "Data refreshed" line(s) first — count=0 removes
     # every occurrence, which also self-heals a file that picked up duplicate
