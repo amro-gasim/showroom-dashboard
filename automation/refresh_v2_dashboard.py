@@ -320,13 +320,13 @@ def main():
     in_path, out_path = sys.argv[1], sys.argv[2]
 
     wb = openpyxl.load_workbook(download_workbook(get_token()), data_only=True)
-    now = dt.datetime.now(dt.timezone.utc)
+    now = dt.datetime.now(dt.timezone(dt.timedelta(hours=4)))  # Dubai / GST, UTC+4, no DST
     data = {
         'showrooms': parse_plan(pick_sheet(wb, PLAN_SHEET)),
         'sequence': parse_sequence(pick_sheet(wb, SEQ_SHEET)),
         'today': now.strftime('%Y-%m-%d'),
         'source': SOURCE_LABEL,
-        'generated': now.strftime('%d %b %Y, %H:%M UTC'),
+        'generated': now.strftime('%d %b %Y, %H:%M GST'),
     }
     names = validate(data)
 
