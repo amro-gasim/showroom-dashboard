@@ -43,6 +43,61 @@ EXPECTED_SHOWROOMS = 5
 TEAM_RE = re.compile(r'^\s*\d+\s*[A-Za-z]{1,2}\s*(,\s*\d+\s*[A-Za-z]{1,2}\s*)*$')
 
 
+# Column positions are NOT assumed. The workbook's columns have been inserted
+# into and reordered in the past, which silently shifted every field by one and
+# published wrong numbers while all the row-level gates still passed. Columns
+# are therefore resolved by matching the header row, and a missing REQUIRED
+# header aborts the run.
+REQUIRED = ('showroom', 'phase', 'rooms',
+            'plannedRemoval', 'plannedInstall', 'plannedCompletion')
+
+
+def header_map(ws):
+    row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    hdr = [' '.join(str(c).split()).lower() if c is not None else '' for c in row]
+
+    def find(*subs, after=-1):
+        for i, h in enumerate(hdr):
+            if i <= after or not h:
+                continue
+            if all(s in h for s in subs):
+                return i
+        return None
+
+    cols = {}
+    cols['showroom'] = find('showroom')
+    cols['phase'] = find('phase')
+    # 'Showrooms' also contains "room", so prefer the distinctive 'Areas' and
+    # otherwise look only to the right of the showroom column.
+    cols['rooms'] = find('area')
+    if cols['rooms'] is None:
+        cols['rooms'] = find('room', after=cols['showroom'] if cols['showroom'] is not None else -1)
+    cols['removalTeam'] = find('removal', 'team')
+    # "Added Manpower / Each Day" appears twice; disambiguate by the team column
+    # each one follows.
+    cols['removalManpower'] = find('manpower', after=cols['removalTeam'] if cols['removalTeam'] is not None else -1)
+    cols['installTeam'] = find('installation', 'team')
+    cols['installManpower'] = find('manpower', after=cols['installTeam'] if cols['installTeam'] is not None else -1)
+    cols['plannedRemoval'] = find('date', 'removal')
+    cols['plannedInstall'] = find('date', 'install')
+    cols['plannedCompletion'] = find('date', 'completion')
+    cols['initialDuration'] = find('initial', 'duration')
+    cols['plannedDuration'] = find('planned', 'duration')
+    cols['excludedDates'] = find('excluded')
+    cols['agreedTeams'] = find('agreed')
+    cols['installationIncharge'] = find('incharge') or find('in charge')
+
+    missing = [k for k in REQUIRED if cols.get(k) is None]
+    if missing:
+        raise SystemExit(
+            f'Could not locate required column(s) {missing} in the header row '
+            f'of {ws.title!r}. Headers found: {[h for h in hdr if h]}. '
+            f'The sheet layout changed — this needs a human look rather than a '
+            f'guess, because reading the wrong column publishes wrong numbers.'
+        )
+    return cols
+
+
 def get_token():
     tenant = os.environ['AZURE_TENANT_ID']
     data = {
@@ -140,16 +195,25 @@ def pick_sheet(wb, want):
 
 
 def parse_plan(ws):
-    """Column A names a showroom on the first row of its block; column B starts
-    a phase and that row carries the phase-level fields; later rows with only
-    column C append more rooms to the current phase."""
+    """Column A names a showroom on the first row of its block; the phase cell
+    starts a phase and that row carries the phase-level fields; later rows with
+    only a room cell append more rooms to the current phase. All column indexes
+    come from header_map, never from fixed positions."""
+    cols = header_map(ws)
+    width = max(c for c in cols.values() if c is not None) + 1
+
+    def cell(row, key):
+        i = cols.get(key)
+        return None if i is None else row[i]
+
     showrooms, cur_sr, cur_ph = [], None, None
     for row in ws.iter_rows(min_row=2, values_only=True):
-        row = list(row) + [None] * (15 - len(row))
-        a, b, c, d, e, f, g, h, i, j, k, l, m, n, o = row[:15]
-        a_s, b_s, c_s = _s(a), _s(b), _s(c)
+        row = list(row) + [None] * width
+        a_s = _s(cell(row, 'showroom'))
+        b_s = _s(cell(row, 'phase'))
+        c_s = _s(cell(row, 'rooms'))
 
-        # Require the word "Showroom": column A also carries stray markers
+        # Require the word "Showroom": that column also carries stray markers
         # such as a bare "TBC" that must not open a new block.
         if a_s and 'showroom' in a_s.lower():
             cur_sr = {'name': ' '.join(a_s.split()), 'phases': []}
@@ -160,7 +224,7 @@ def parse_plan(ws):
 
         if b_s:
             team = note = None
-            d_s = _s(d)
+            d_s = _s(cell(row, 'removalTeam'))
             if d_s:
                 if TEAM_RE.match(d_s):
                     team = d_s
@@ -170,17 +234,17 @@ def parse_plan(ws):
                 'phase': b_s,
                 'rooms': [],
                 'removalTeam': team,
-                'removalManpower': _num(e),
-                'installTeam': _num(f),
-                'installManpower': _num(g),
-                'plannedRemoval': _date(h),
-                'plannedInstall': _date(i),
-                'plannedCompletion': _date(j),
-                'initialDuration': _s(k),
-                'plannedDuration': _s(l),
-                'excludedDates': _s(m),
-                'agreedTeams': _s(n),
-                'installationIncharge': _s(o),
+                'removalManpower': _num(cell(row, 'removalManpower')),
+                'installTeam': _num(cell(row, 'installTeam')),
+                'installManpower': _num(cell(row, 'installManpower')),
+                'plannedRemoval': _date(cell(row, 'plannedRemoval')),
+                'plannedInstall': _date(cell(row, 'plannedInstall')),
+                'plannedCompletion': _date(cell(row, 'plannedCompletion')),
+                'initialDuration': _s(cell(row, 'initialDuration')),
+                'plannedDuration': _s(cell(row, 'plannedDuration')),
+                'excludedDates': _s(cell(row, 'excludedDates')),
+                'agreedTeams': _s(cell(row, 'agreedTeams')),
+                'installationIncharge': _s(cell(row, 'installationIncharge')),
                 'note': note,
             }
             cur_sr['phases'].append(cur_ph)
@@ -195,23 +259,37 @@ def parse_plan(ws):
 
         # Some phases carry their removal date on a continuation row.
         if not b_s and cur_ph is not None and cur_ph['plannedRemoval'] is None:
-            hd = _date(h)
+            hd = _date(cell(row, 'plannedRemoval'))
             if hd:
                 cur_ph['plannedRemoval'] = hd
     return showrooms
 
 
 def parse_sequence(ws):
-    seq, started = [], False
+    """Finds the header row by its 'Old'/'New' labels and takes the column
+    positions from it, so inserted columns cannot shift the values."""
+    seq, idx = [], None
     for row in ws.iter_rows(values_only=True):
-        row = list(row) + [None] * (3 - len(row))
-        a, b, c = _s(row[0]), _s(row[1]), _s(row[2])
-        if not started:
-            if a and 'old' in a.lower() and b and 'new' in b.lower():
-                started = True
+        vals = [_s(v) for v in row]
+        if idx is None:
+            low = [(v or '').lower() for v in vals]
+            o = next((i for i, v in enumerate(low) if 'old' in v), None)
+            n = next((i for i, v in enumerate(low) if 'new' in v), None)
+            if o is not None and n is not None:
+                r = next((i for i, v in enumerate(low) if 'remark' in v), None)
+                idx = (o, n, r)
             continue
+        o, n, r = idx
+        a = vals[o] if o < len(vals) else None
+        b = vals[n] if n < len(vals) else None
+        c = vals[r] if r is not None and r < len(vals) else None
         if a and b:
             seq.append({'old': a, 'new': b, 'remark': c})
+    if not seq:
+        raise SystemExit(
+            'Old-New Sequence: could not find an Old/New header row, or it had '
+            'no data rows beneath it.'
+        )
     return seq
 
 
